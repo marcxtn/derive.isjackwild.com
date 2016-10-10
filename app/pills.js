@@ -76,11 +76,13 @@ export default class Particle {
 	onEnterFocus() {
 		this.mesh.material.color.set(0xed4962);
 		if (this.sound) TweenLite.to(this.sound.gainNode.gain, 0.33, {value: 8});
+		TweenLite.to(this.body, 0.33, {linearDamping: 1});
 	}
 
 	onExitFocus() {
 		this.mesh.material.color.set(0xffffff);
 		if (this.sound) TweenLite.to(this.sound.gainNode.gain, 0.33, {value: 1});
+		TweenLite.to(this.body, 0.33, {linearDamping: 0.1});
 	}
 
 	update(wind) {

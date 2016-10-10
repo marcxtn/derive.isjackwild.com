@@ -4,7 +4,6 @@ export let scene, audioScene, physicsScene, boxMesh, intersectableMeshes;
 export const pills = [];
 import Particle from './pills.js'
 import { camera, controls } from './camera.js';
-import { mesh as pillbox } from './pillbox.js';
 import { mesh as skybox, update as updateSkybox } from './skybox.js';
 import { PhysicsScene } from './physics.js';
 import { lights } from './lighting.js';
@@ -62,11 +61,6 @@ export const init = () => {
 }
 
 export const update = (delta) => {
-	const targetX = convertToRange(app.mouse.y, [0, window.innerWidth], [-1, 1]) * maxRotation.x * -1;
-	const targetY = convertToRange(app.mouse.x, [0, window.innerHeight], [-1, 1]) * maxRotation.y;
-	pillbox.rotation.x += (targetX - pillbox.rotation.x) * 0.05;
-	pillbox.rotation.y += (targetY - pillbox.rotation.y) * 0.05;
-	
 	const position = new THREE.Vector3().copy(camera.position);
 	const direction = new THREE.Vector3().copy(camera.getWorldDirection());
 	updateSkybox(delta);
