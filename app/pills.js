@@ -1,23 +1,29 @@
 const CANNON = require('cannon');
 const THREE = require('three');
 const TweenLite = require('gsap');
+import PubSub from 'pubsub-js';
 import _ from 'lodash';
 import { decode } from './sound-handler.js';
 import { WORLD_SIZE, INIT_POSITION_VARIATION, TIMESTEP, BODIES_COUNT, MAX_VELOCITY, MIN_VELOCITY, WIND_STRENGTH, PILLS_COUNT } from './constants.js';
 
 
 export default class Particle {
-	constructor({ x, y, z, mass, velocity, soundSrc, audioScene }) {
+	constructor({ x, y, z, mass, velocity, soundSrc, audioScene, imgSrc, colour, id }) {
 		this.initPosition = { x, y, z };
 		this.mass = mass;
 		this.initVelocity = { x: velocity, y: velocity, z: velocity };
 		this.audioScene = audioScene;
 		this.onLoadSound = this.onLoadSound.bind(this);
 		this.onDecodeSound = this.onDecodeSound.bind(this);
+		this.imgSrc = imgSrc;
+		this.naturalColour = new THREE.Color(colour.r / 255, colour.g / 255, colour.b / 255);
+		this.focused = false;
+		this.id = id;
 
 		this.setupBody();
 		this.setupMesh();
 		this.loadSound(soundSrc);
+		this.createImageTexture(imgSrc);
 	}
 
 	setupBody() {
@@ -36,7 +42,7 @@ export default class Particle {
 		// const geometry = new THREE.BoxGeometry(4, 4, 0.4);
 		const geometry = new THREE.SphereGeometry(2, 16, 16);
 		// const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
-		const material = new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 100 });
+		const material = new THREE.MeshPhongMaterial({ color: this.naturalColour, shininess: 100 });
 		this.mesh = new THREE.Mesh(geometry, material);
 		this.mesh.castShadow = true;
 		this.mesh.receiveShadow = true;
@@ -44,9 +50,13 @@ export default class Particle {
 		this.mesh.onExitFocus = this.onExitFocus.bind(this);
 	}
 
+	createImageTexture(src) {
+		this.texture = new THREE.TextureLoader().load(src);
+	}
+
 	loadSound(src) {
 		this.request = new XMLHttpRequest();
-		this.request.open('GET', `assets/sounds/${src}`, true);
+		this.request.open('GET', src, true);
 		this.request.responseType = 'arraybuffer'
 		this.request.onload = this.onLoadSound;
 		this.request.send();
@@ -74,24 +84,38 @@ export default class Particle {
 	}
 
 	onEnterFocus() {
-		this.mesh.material.color.set(0xed4962);
-		if (this.sound) TweenLite.to(this.sound.gainNode.gain, 0.33, {value: 8});
+		if (this.focused) return;
+		console.log('enter focus', this.id);
+		this.focused = true;
+		this.mesh.material.color.set(0xffffff);
+		if (this.sound) TweenLite.to(this.sound.gainNode.gain, 0.33, {value: 14});
 		TweenLite.to(this.body, 0.33, {linearDamping: 1});
+		if (this.texture) PubSub.publish('image.show', this.texture); 
 	}
 
 	onExitFocus() {
-		this.mesh.material.color.set(0xffffff);
+		if (!this.focused) return;
+		console.log('exit focus', this.id);
+		this.focused = false;
+		this.mesh.material.color.set(this.naturalColour);
 		if (this.sound) TweenLite.to(this.sound.gainNode.gain, 0.33, {value: 1});
 		TweenLite.to(this.body, 0.33, {linearDamping: 0.1});
+		PubSub.publish('image.hide');
 	}
 
 	update(wind) {
 		this.body.applyLocalImpulse(wind, new CANNON.Vec3(0,0,0));
 		const prevQuat = new CANNON.Quaternion().copy(this.body.quaternion);
+		// this.body.quaternion.set(
+		// 	_.clamp(prevQuat.x, Math.PI / -12, Math.PI / 12),
+		// 	prevQuat.y,
+		// 	_.clamp(prevQuat.z, Math.PI / -6, Math.PI / 6),
+		// 	prevQuat.w,
+		// ); // I don't think this is a particuarly reliable way of doing this...
 		this.body.quaternion.set(
-			_.clamp(prevQuat.x, Math.PI / -12, Math.PI / 12),
+			prevQuat.x,
 			prevQuat.y,
-			_.clamp(prevQuat.z, Math.PI / -6, Math.PI / 6),
+			prevQuat.z,
 			prevQuat.w,
 		); // I don't think this is a particuarly reliable way of doing this...
 		this.mesh.position.copy(this.body.position);

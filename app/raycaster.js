@@ -9,10 +9,14 @@ export const update = (origin, direction, intersectableMeshes) => {
 	// 	console.log(mesh.object);
 	// 	mesh.object.material.color.set(0xff00ff);
 	// });
-
+	let foundOne = false;
 	intersectableMeshes.forEach((mesh) => {
 		const intersected = raycaster.intersectObject(mesh);
-		if (intersected.length) return mesh.onEnterFocus();
+		if (intersected.length && foundOne === false) {
+			foundOne = true;
+			mesh.onEnterFocus();
+			return;
+		}
 		mesh.onExitFocus();
 	});
 }
